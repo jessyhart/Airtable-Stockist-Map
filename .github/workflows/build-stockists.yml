@@ -21,7 +21,7 @@ jobs:
       - name: Generate stockists.json
         run: node build-stockists.mjs
         env:
-          AIRTABLE_TOKEN: ${{ pat8ZaKPfqulGFIAX.6b0e3d3d84d78ea3e3ad3f376066eac88d34de37f1de11f331376e10a89d9452 }}
+          AIRTABLE_TOKEN: ${{ secrets.AIRTABLE_TOKEN }}
 
       - name: Commit if changed
         run: |
