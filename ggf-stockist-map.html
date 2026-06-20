@@ -1,0 +1,856 @@
+<!-- =======================================================================
+     GOLD GOURMET FOODS — INTERACTIVE STOCKIST MAP
+     Optimized build: static JSON data source (NO Airtable token in browser),
+     markers built once, lazy popups, no full list re-render on select.
+     ======================================================================= -->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
+<script>
+(function(){
+  if (window.gtag) return;
+  var s = document.createElement('script');
+  s.async = true;
+  s.src = 'https://www.googletagmanager.com/gtag/js?id=G-KEKPC6F71S';
+  document.head.appendChild(s);
+  window.dataLayer = window.dataLayer || [];
+  window.gtag = function(){ dataLayer.push(arguments); };
+  gtag('js', new Date());
+  gtag('config', 'G-KEKPC6F71S');
+})();
+</script>
+
+<style>
+#ggf-stockist-app {
+  --ggf-black: #0e0e0e;
+  --ggf-ink: #1a1a1a;
+  --ggf-gold: #d4a418;
+  --ggf-gold-soft: #f5e6b3;
+  --ggf-cream: #f7f3ea;
+  --ggf-paper: #fdfbf5;
+  --ggf-line: #e6dfd1;
+  --ggf-muted: #6b6256;
+  --ggf-error: #b3331f;
+  --ggf-shadow: 0 2px 16px rgba(20, 15, 5, 0.08);
+  --ggf-shadow-lift: 0 8px 28px rgba(20, 15, 5, 0.16);
+  --ggf-display: 'Playfair Display', 'Cormorant Garamond', Georgia, serif;
+  --ggf-body: 'Inter', system-ui, -apple-system, sans-serif;
+
+  font-family: var(--ggf-body);
+  color: var(--ggf-ink);
+  background: var(--ggf-paper);
+  border: 1px solid var(--ggf-line);
+  border-radius: 4px;
+  overflow: hidden;
+  box-shadow: var(--ggf-shadow);
+  display: flex;
+  flex-direction: column;
+  max-width: 1280px;
+  margin: 0 auto;
+  box-sizing: border-box;
+}
+#ggf-stockist-app *,
+#ggf-stockist-app *::before,
+#ggf-stockist-app *::after { box-sizing: border-box; }
+
+.ggf-header {
+  background: var(--ggf-black);
+  color: var(--ggf-cream);
+  padding: 22px 24px 20px;
+  border-bottom: 2px solid var(--ggf-gold);
+}
+.ggf-eyebrow {
+  font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase;
+  color: var(--ggf-gold); font-weight: 600; margin: 0 0 6px;
+}
+.ggf-title {
+  font-family: var(--ggf-display);
+  font-size: clamp(24px, 3.5vw, 34px);
+  font-weight: 600; line-height: 1.1; margin: 0 0 14px;
+  color: #fff; letter-spacing: -0.01em;
+}
+.ggf-controls {
+  display: grid; grid-template-columns: 1fr auto;
+  gap: 12px; align-items: center;
+}
+@media (max-width: 640px) { .ggf-controls { grid-template-columns: 1fr; } }
+
+.ggf-search-wrap { position: relative; display: flex; align-items: center; }
+.ggf-search-icon {
+  position: absolute; left: 14px; width: 18px; height: 18px;
+  color: var(--ggf-muted); pointer-events: none;
+}
+.ggf-search {
+  width: 100%; padding: 12px 14px 12px 42px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 3px; color: #fff;
+  font-family: var(--ggf-body); font-size: 14px;
+  transition: all 0.18s ease;
+}
+.ggf-search::placeholder { color: rgba(247, 243, 234, 0.5); }
+.ggf-search:focus {
+  outline: none; border-color: var(--ggf-gold);
+  background: rgba(255,255,255,0.1);
+}
+
+.ggf-gps-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 16px;
+  background: var(--ggf-gold); color: var(--ggf-black);
+  border: none; border-radius: 3px;
+  font-family: var(--ggf-body);
+  font-size: 13px; font-weight: 600; letter-spacing: 0.03em;
+  cursor: pointer; transition: all 0.18s ease; white-space: nowrap;
+}
+.ggf-gps-btn:hover { background: #e6b626; transform: translateY(-1px); }
+.ggf-gps-btn:active { transform: translateY(0); }
+.ggf-gps-btn.loading { opacity: 0.6; cursor: wait; }
+.ggf-gps-btn svg { width: 16px; height: 16px; }
+
+.ggf-filters {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 14px; align-items: center;
+}
+.ggf-filter-label {
+  font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(247, 243, 234, 0.55); margin-right: 4px; font-weight: 500;
+}
+.ggf-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.22);
+  color: var(--ggf-cream);
+  border-radius: 999px;
+  font-size: 12px; font-weight: 500; letter-spacing: 0.02em;
+  cursor: pointer; transition: all 0.18s ease;
+  font-family: var(--ggf-body);
+}
+.ggf-chip:hover { border-color: var(--ggf-gold); color: #fff; }
+.ggf-chip.active {
+  background: var(--ggf-gold); border-color: var(--ggf-gold);
+  color: var(--ggf-black); font-weight: 600;
+}
+.ggf-chip-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: currentColor; display: inline-block;
+}
+
+.ggf-body { display: grid; grid-template-columns: 380px 1fr; min-height: 600px; }
+@media (max-width: 860px) { .ggf-body { grid-template-columns: 1fr; } }
+
+.ggf-sidebar {
+  background: var(--ggf-paper);
+  border-right: 1px solid var(--ggf-line);
+  display: flex; flex-direction: column; max-height: 600px;
+}
+@media (max-width: 860px) {
+  .ggf-sidebar {
+    border-right: none; border-top: 1px solid var(--ggf-line);
+    order: 2; max-height: 420px;
+  }
+}
+.ggf-sidebar-head {
+  padding: 14px 20px; border-bottom: 1px solid var(--ggf-line);
+  background: var(--ggf-cream);
+  font-size: 12px; letter-spacing: 0.15em; text-transform: uppercase;
+  color: var(--ggf-muted); font-weight: 600;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.ggf-count {
+  background: var(--ggf-black); color: var(--ggf-gold);
+  padding: 3px 10px; border-radius: 3px;
+  font-size: 11px; letter-spacing: 0.05em;
+}
+.ggf-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.ggf-list::-webkit-scrollbar { width: 8px; }
+.ggf-list::-webkit-scrollbar-track { background: var(--ggf-cream); }
+.ggf-list::-webkit-scrollbar-thumb { background: var(--ggf-gold-soft); border-radius: 4px; }
+
+.ggf-card {
+  padding: 16px 20px; border-bottom: 1px solid var(--ggf-line);
+  cursor: pointer; transition: background 0.15s ease;
+  position: relative;
+}
+.ggf-card:hover { background: var(--ggf-cream); }
+.ggf-card.active {
+  background: var(--ggf-cream);
+  border-left: 3px solid var(--ggf-gold);
+  padding-left: 17px;
+}
+.ggf-card-name {
+  font-family: var(--ggf-display);
+  font-size: 17px; font-weight: 600; margin: 0 0 4px;
+  color: var(--ggf-ink); line-height: 1.25;
+}
+.ggf-card-distance {
+  font-size: 11px; color: var(--ggf-gold);
+  font-weight: 600; letter-spacing: 0.05em;
+  margin-left: 8px; white-space: nowrap;
+}
+.ggf-card-top {
+  display: flex; justify-content: space-between;
+  align-items: baseline; margin-bottom: 6px;
+}
+.ggf-card-addr {
+  font-size: 13px; color: var(--ggf-muted);
+  line-height: 1.4; margin: 0 0 8px;
+}
+.ggf-card-ranges {
+  display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.ggf-range-tag {
+  font-size: 10px; padding: 3px 8px; border-radius: 2px;
+  font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+}
+.ggf-range-tag.sauces { background: #fef0d5; color: #8a5d00; }
+.ggf-range-tag.smoothies { background: #e8f0d8; color: #4a6b15; }
+.ggf-range-tag.lean { background: #fde2dc; color: #a3361f; }
+
+.ggf-card-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.ggf-card-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 6px 10px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--ggf-line);
+  background: #fff; color: var(--ggf-ink);
+  border-radius: 2px; cursor: pointer; text-decoration: none;
+  transition: all 0.15s ease; font-family: var(--ggf-body);
+}
+.ggf-card-btn:hover {
+  background: var(--ggf-black); color: var(--ggf-gold);
+  border-color: var(--ggf-black);
+}
+
+.ggf-empty, .ggf-loading-state {
+  padding: 40px 24px; text-align: center;
+  color: var(--ggf-muted); font-size: 14px;
+}
+.ggf-empty strong, .ggf-loading-state strong {
+  display: block; font-family: var(--ggf-display);
+  font-size: 18px; color: var(--ggf-ink); margin-bottom: 8px;
+}
+.ggf-spinner {
+  display: inline-block; width: 28px; height: 28px;
+  border: 2px solid var(--ggf-line);
+  border-top-color: var(--ggf-gold);
+  border-radius: 50%;
+  animation: ggf-spin 0.7s linear infinite;
+  margin-bottom: 14px;
+}
+@keyframes ggf-spin { to { transform: rotate(360deg); } }
+
+.ggf-map-wrap { position: relative; background: #e8e4d8; }
+#ggf-map { height: 600px; width: 100%; z-index: 1; }
+@media (max-width: 860px) { #ggf-map { height: 420px; } }
+
+.ggf-marker { width: 32px; height: 40px; position: relative; transform: translate(-50%, -100%); }
+.ggf-marker-pin {
+  width: 32px; height: 32px;
+  background: var(--ggf-gold);
+  border: 2px solid var(--ggf-black);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 3px 8px rgba(0,0,0,0.3);
+  display: flex; align-items: center; justify-content: center;
+}
+.ggf-marker-pin::after {
+  content: ''; width: 10px; height: 10px;
+  background: var(--ggf-black); border-radius: 50%;
+  transform: rotate(45deg);
+}
+.ggf-marker.user .ggf-marker-pin { background: #2d6cdf; border-color: #fff; }
+.ggf-marker.user .ggf-marker-pin::after { background: #fff; }
+
+.marker-cluster-small, .marker-cluster-medium, .marker-cluster-large {
+  background-color: rgba(212, 164, 24, 0.35) !important;
+}
+.marker-cluster-small div, .marker-cluster-medium div, .marker-cluster-large div {
+  background-color: var(--ggf-gold) !important;
+  color: var(--ggf-black) !important;
+  font-family: var(--ggf-body) !important;
+  font-weight: 700 !important;
+  border: 2px solid var(--ggf-black);
+}
+
+.leaflet-popup-content-wrapper {
+  border-radius: 3px !important;
+  box-shadow: var(--ggf-shadow-lift) !important;
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important; padding: 16px 18px !important;
+  font-family: var(--ggf-body); min-width: 220px;
+}
+.leaflet-popup-tip { background: #fff !important; }
+.ggf-popup-name {
+  font-family: var(--ggf-display);
+  font-size: 17px; font-weight: 600; margin: 0 0 6px;
+  color: var(--ggf-ink); line-height: 1.2;
+}
+.ggf-popup-addr {
+  font-size: 12px; color: var(--ggf-muted);
+  margin: 0 0 10px; line-height: 1.4;
+}
+.ggf-popup-ranges {
+  display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 10px;
+}
+.ggf-popup-actions {
+  display: flex; gap: 6px; flex-wrap: wrap;
+  border-top: 1px solid var(--ggf-line); padding-top: 10px;
+}
+.ggf-popup-actions a {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ggf-ink); text-decoration: none;
+  padding: 5px 9px;
+  border: 1px solid var(--ggf-line); border-radius: 2px;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.ggf-popup-actions a:hover { background: var(--ggf-black); color: var(--ggf-gold); }
+
+.ggf-footer {
+  background: var(--ggf-cream); padding: 14px 24px;
+  border-top: 1px solid var(--ggf-line);
+  font-size: 12px; color: var(--ggf-muted);
+  text-align: center; letter-spacing: 0.02em;
+}
+.ggf-footer a { color: var(--ggf-ink); font-weight: 600; }
+
+.ggf-toast {
+  position: absolute; top: 16px; left: 50%;
+  transform: translateX(-50%);
+  background: var(--ggf-black); color: var(--ggf-cream);
+  padding: 10px 18px; border-radius: 3px;
+  font-size: 13px; z-index: 1000;
+  border-left: 3px solid var(--ggf-error);
+  box-shadow: var(--ggf-shadow-lift);
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.25s ease;
+}
+.ggf-toast.show { opacity: 1; }
+</style>
+
+<div id="ggf-stockist-app">
+
+  <header class="ggf-header">
+    <p class="ggf-eyebrow">Find a Stockist</p>
+    <h2 class="ggf-title">Stockists across Australia</h2>
+
+    <div class="ggf-controls">
+      <div class="ggf-search-wrap">
+        <svg class="ggf-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/>
+        </svg>
+        <input type="text" class="ggf-search" id="ggf-search"
+               placeholder="Search by suburb, postcode or store name…"
+               autocomplete="off" />
+      </div>
+      <button class="ggf-gps-btn" id="ggf-gps">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+        </svg>
+        Near me
+      </button>
+    </div>
+
+    <div class="ggf-filters">
+      <span class="ggf-filter-label">Product range</span>
+      <button class="ggf-chip active" data-range="all">All</button>
+      <button class="ggf-chip" data-range="sauces"><span class="ggf-chip-dot" style="color:#d4a418"></span>Sauces &amp; Dressings</button>
+      <button class="ggf-chip" data-range="smoothies"><span class="ggf-chip-dot" style="color:#86a82e"></span>Smoothies</button>
+      <button class="ggf-chip" data-range="lean"><span class="ggf-chip-dot" style="color:#c84a32"></span>Lean &amp; Loud</button>
+    </div>
+  </header>
+
+  <div class="ggf-body">
+    <aside class="ggf-sidebar">
+      <div class="ggf-sidebar-head">
+        <span>Stockists</span>
+        <span class="ggf-count" id="ggf-count">—</span>
+      </div>
+      <div class="ggf-list" id="ggf-list">
+        <div class="ggf-loading-state">
+          <div class="ggf-spinner"></div>
+          <strong>Loading stockists…</strong>
+          Fetching the latest from our database.
+        </div>
+      </div>
+    </aside>
+
+    <div class="ggf-map-wrap">
+      <div id="ggf-map"></div>
+      <div class="ggf-toast" id="ggf-toast"></div>
+    </div>
+  </div>
+
+  <footer class="ggf-footer">
+    Can't find a store near you?
+    <a href="/contact-us">Tell us where you shop</a> &amp; we'll get the goods on their shelves.
+  </footer>
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  // ============================================================
+  // CONFIG
+  // DATA_URL points at a STATIC JSON file on a CDN — no Airtable
+  // token in the browser. Generate it with build-stockists.mjs.
+  // e.g. https://cdn.jsdelivr.net/gh/<user>/<repo>@main/stockists.json
+  // ============================================================
+  const DATA_URL      = 'REPLACE_WITH_YOUR_JSON_URL';
+  const CACHE_MINUTES = 60;   // client-side sessionStorage cache
+  const VISIBLE_CAP   = 200;  // max cards rendered in the sidebar
+  // ============================================================
+
+  const RANGE_LABELS = { sauces: "Sauces", smoothies: "Smoothies", lean: "Lean & Loud" };
+
+  const state = {
+    stockists: [],
+    filtered: [],
+    activeRange: "all",
+    searchTerm: "",
+    userLocation: null,
+    activeId: null,
+    map: null,
+    markerCluster: null,
+    markerById: {},   // every stockist's marker, built once
+    userMarker: null
+  };
+
+  const $ = (sel) => document.querySelector(sel);
+
+  function track(eventName, params) {
+    if (typeof gtag === 'function') {
+      gtag('event', eventName, Object.assign({ event_category: 'stockist_map' }, params || {}));
+    }
+  }
+
+  function distanceKm(lat1, lng1, lat2, lng2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLng = (lng2 - lng1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 +
+              Math.cos(lat1 * Math.PI/180) * Math.cos(lat2 * Math.PI/180) *
+              Math.sin(dLng/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function formatDistance(km) {
+    if (km < 1) return Math.round(km * 1000) + ' m';
+    if (km < 10) return km.toFixed(1) + ' km';
+    return Math.round(km) + ' km';
+  }
+
+  function showToast(msg) {
+    const t = $('#ggf-toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3500);
+  }
+
+  function escapeHtml(str) {
+    return String(str || '').replace(/[&<>"']/g, c =>
+      ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+  function escapeJs(str) { return String(str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+
+  // -------- Data: one static fetch, sessionStorage cached --------
+  async function fetchStockists() {
+    const cacheKey = 'ggf_stockists_v2';
+    const cacheTimeKey = 'ggf_stockists_v2_time';
+    const cached = sessionStorage.getItem(cacheKey);
+    const cachedTime = parseInt(sessionStorage.getItem(cacheTimeKey) || '0', 10);
+    const ageMin = (Date.now() - cachedTime) / 60000;
+
+    if (cached && ageMin < CACHE_MINUTES) {
+      try { return JSON.parse(cached); } catch(e) {}
+    }
+
+    const res = await fetch(DATA_URL);
+    if (!res.ok) throw new Error('Data ' + res.status);
+    const data = await res.json();
+    const rows = Array.isArray(data) ? data : (data.stockists || []);
+
+    const all = rows
+      .map(s => ({
+        id: s.id,
+        name: s.name || 'Unknown store',
+        address: s.address || '',
+        suburb: s.suburb || '',
+        state: s.state || '',
+        postcode: s.postcode || '',
+        phone: s.phone || '',
+        website: s.website || '',
+        hours: s.hours || '',
+        lat: parseFloat(s.lat),
+        lng: parseFloat(s.lng),
+        ranges: Array.isArray(s.ranges) ? s.ranges : []
+      }))
+      .filter(s => !isNaN(s.lat) && !isNaN(s.lng));
+
+    try {
+      sessionStorage.setItem(cacheKey, JSON.stringify(all));
+      sessionStorage.setItem(cacheTimeKey, String(Date.now()));
+    } catch(e) {}
+
+    return all;
+  }
+
+  function initMap() {
+    state.map = L.map('ggf-map', {
+      zoomControl: true,
+      scrollWheelZoom: false,
+      preferCanvas: true
+    }).setView([-25.27, 133.78], 4);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+      maxZoom: 19,
+      updateWhenIdle: true,
+      keepBuffer: 1
+    }).addTo(state.map);
+
+    state.map.on('click', () => state.map.scrollWheelZoom.enable());
+    state.map.on('mouseout', () => state.map.scrollWheelZoom.disable());
+
+    state.markerCluster = L.markerClusterGroup({
+      maxClusterRadius: 50,
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      disableClusteringAtZoom: 13,
+      chunkedLoading: true
+    });
+    state.map.addLayer(state.markerCluster);
+  }
+
+  function makeMarkerIcon(isUser) {
+    return L.divIcon({
+      className: 'ggf-marker-icon',
+      html: '<div class="ggf-marker' + (isUser ? ' user' : '') +
+            '"><div class="ggf-marker-pin"></div></div>',
+      iconSize: [32, 40],
+      iconAnchor: [16, 40]
+    });
+  }
+
+  // -------- Build every marker ONCE; popups generated lazily --------
+  function buildMarkers() {
+    const icon = makeMarkerIcon(false);
+    state.markerById = {};
+    state.stockists.forEach(s => {
+      const m = L.marker([s.lat, s.lng], { icon });
+      // function content => popup HTML is only built when actually opened
+      m.bindPopup(() => popupHTML(s), { closeButton: true, autoPan: true });
+      m.on('click', () => {
+        setActive(s.id);
+        track('stockist_pin_click', {
+          stockist_id: s.id, stockist_name: s.name, stockist_suburb: s.suburb
+        });
+      });
+      state.markerById[s.id] = m;
+    });
+  }
+
+  // -------- Swap the cluster's contents to the filtered subset --------
+  function syncMarkers() {
+    state.markerCluster.clearLayers();
+    const subset = state.filtered.map(s => state.markerById[s.id]).filter(Boolean);
+    state.markerCluster.addLayers(subset);
+  }
+
+  function fitFiltered() {
+    if (state.filtered.length > 0 && state.filtered.length < state.stockists.length) {
+      const bounds = L.latLngBounds(state.filtered.map(s => [s.lat, s.lng]));
+      if (state.userLocation) bounds.extend([state.userLocation.lat, state.userLocation.lng]);
+      state.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 13 });
+    } else if (state.userLocation) {
+      state.map.setView([state.userLocation.lat, state.userLocation.lng], 11);
+    }
+  }
+
+  function popupHTML(s) {
+    const ranges = s.ranges.map(r =>
+      `<span class="ggf-range-tag ${r}">${RANGE_LABELS[r] || r}</span>`
+    ).join('');
+
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+    const phoneUrl = s.phone ? `tel:${s.phone.replace(/[^\d+]/g,'')}` : null;
+    const fullAddress = [s.address, s.suburb, s.state, s.postcode].filter(Boolean).join(', ');
+
+    return `
+      <div class="ggf-popup">
+        <p class="ggf-popup-name">${escapeHtml(s.name)}</p>
+        ${fullAddress ? `<p class="ggf-popup-addr">${escapeHtml(fullAddress)}</p>` : ''}
+        ${s.hours ? `<p class="ggf-popup-addr"><strong>Hours:</strong> ${escapeHtml(s.hours)}</p>` : ''}
+        ${ranges ? `<div class="ggf-popup-ranges">${ranges}</div>` : ''}
+        <div class="ggf-popup-actions">
+          <a href="${directionsUrl}" target="_blank" rel="noopener"
+             onclick="window.__ggfTrack('directions', '${escapeJs(s.id)}', '${escapeJs(s.name)}')">
+             Directions
+          </a>
+          ${phoneUrl ? `<a href="${phoneUrl}"
+             onclick="window.__ggfTrack('call', '${escapeJs(s.id)}', '${escapeJs(s.name)}')">
+             Call ${escapeHtml(s.phone)}
+          </a>` : ''}
+          ${s.website ? `<a href="${escapeHtml(s.website)}" target="_blank" rel="noopener"
+             onclick="window.__ggfTrack('website', '${escapeJs(s.id)}', '${escapeJs(s.name)}')">
+             Visit site
+          </a>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  window.__ggfTrack = function(action, id, name) {
+    const eventMap = {
+      directions: 'stockist_directions_click',
+      call: 'stockist_call_click',
+      website: 'stockist_website_click'
+    };
+    track(eventMap[action] || 'stockist_action', { stockist_id: id, stockist_name: name });
+  };
+
+  // -------- Sidebar list: rebuilt only when the filtered SET changes --------
+  function renderList() {
+    const list = $('#ggf-list');
+    $('#ggf-count').textContent = state.filtered.length;
+
+    if (state.filtered.length === 0) {
+      list.innerHTML = `
+        <div class="ggf-empty">
+          <strong>No stockists match</strong>
+          Try a different search or product range.
+        </div>`;
+      return;
+    }
+
+    const visible = state.filtered.slice(0, VISIBLE_CAP);
+    const remaining = state.filtered.length - VISIBLE_CAP;
+
+    const cards = visible.map(s => {
+      const ranges = s.ranges.map(r =>
+        `<span class="ggf-range-tag ${r}">${RANGE_LABELS[r] || r}</span>`
+      ).join('');
+
+      const dist = (s._distance != null)
+        ? `<span class="ggf-card-distance">${formatDistance(s._distance)}</span>` : '';
+
+      const fullAddress = [s.address, s.suburb, s.state, s.postcode].filter(Boolean).join(', ');
+      const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${s.lat},${s.lng}`;
+      const phone = s.phone ? s.phone.replace(/[^\d+]/g,'') : null;
+
+      return `
+        <div class="ggf-card ${state.activeId === s.id ? 'active' : ''}" data-id="${escapeHtml(s.id)}">
+          <div class="ggf-card-top">
+            <h3 class="ggf-card-name">${escapeHtml(s.name)}</h3>
+            ${dist}
+          </div>
+          ${fullAddress ? `<p class="ggf-card-addr">${escapeHtml(fullAddress)}</p>` : ''}
+          ${ranges ? `<div class="ggf-card-ranges">${ranges}</div>` : ''}
+          <div class="ggf-card-actions">
+            <a class="ggf-card-btn" href="${directionsUrl}" target="_blank" rel="noopener"
+               data-action="directions" data-id="${escapeHtml(s.id)}" data-name="${escapeHtml(s.name)}">
+              Directions
+            </a>
+            ${phone ? `<a class="ggf-card-btn" href="tel:${phone}"
+               data-action="call" data-id="${escapeHtml(s.id)}" data-name="${escapeHtml(s.name)}">Call</a>` : ''}
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    const moreNote = remaining > 0
+      ? `<div class="ggf-empty"><strong>${remaining} more in this view</strong>Zoom the map or use Near me to narrow down.</div>`
+      : '';
+
+    list.innerHTML = cards + moreNote;
+  }
+
+  // -------- Select: just toggle the .active class, no full re-render --------
+  function setActive(id) {
+    state.activeId = id;
+    const list = $('#ggf-list');
+    const prev = list.querySelector('.ggf-card.active');
+    if (prev) prev.classList.remove('active');
+    const next = list.querySelector('.ggf-card[data-id="' + (window.CSS && CSS.escape ? CSS.escape(id) : id) + '"]');
+    if (next) next.classList.add('active');
+  }
+
+  function applyFilters() {
+    const term = state.searchTerm.toLowerCase().trim();
+    state.filtered = state.stockists.filter(s => {
+      const rangeOk = state.activeRange === 'all' || s.ranges.includes(state.activeRange);
+      if (!term) return rangeOk;
+      const haystack = [s.name, s.address, s.suburb, s.state, s.postcode]
+        .join(' ').toLowerCase();
+      return rangeOk && haystack.includes(term);
+    });
+
+    if (state.userLocation) {
+      state.filtered.forEach(s => {
+        s._distance = distanceKm(state.userLocation.lat, state.userLocation.lng, s.lat, s.lng);
+      });
+      state.filtered.sort((a, b) => a._distance - b._distance);
+    } else {
+      state.filtered.forEach(s => delete s._distance);
+      state.filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }
+
+    renderList();
+    syncMarkers();
+    fitFiltered();
+  }
+
+  function geolocate() {
+    const btn = $('#ggf-gps');
+    if (!navigator.geolocation) {
+      showToast('Geolocation not supported in this browser.');
+      track('stockist_geolocate_error', { reason: 'unsupported' });
+      return;
+    }
+    btn.classList.add('loading');
+    btn.textContent = 'Locating…';
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        state.userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        if (state.userMarker) state.userMarker.remove();
+        state.userMarker = L.marker(
+          [state.userLocation.lat, state.userLocation.lng],
+          { icon: makeMarkerIcon(true), zIndexOffset: 1000 }
+        ).addTo(state.map).bindPopup('<strong>You are here</strong>');
+
+        btn.classList.remove('loading');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          </svg> Located`;
+
+        applyFilters();
+        state.map.setView([state.userLocation.lat, state.userLocation.lng], 11);
+        track('stockist_geolocate_success', { accuracy_m: Math.round(pos.coords.accuracy) });
+      },
+      (err) => {
+        btn.classList.remove('loading');
+        btn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>
+          </svg> Near me`;
+        const reasons = {1:'denied', 2:'unavailable', 3:'timeout'};
+        showToast(err.code === 1 ? 'Location permission denied.' : 'Could not get your location.');
+        track('stockist_geolocate_error', { reason: reasons[err.code] || 'unknown' });
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+    track('stockist_geolocate_request');
+  }
+
+  function wireEvents() {
+    let searchTimer;
+    $('#ggf-search').addEventListener('input', (e) => {
+      state.searchTerm = e.target.value;
+      clearTimeout(searchTimer);
+      searchTimer = setTimeout(() => {
+        applyFilters();
+        if (state.searchTerm.trim().length >= 2) {
+          track('stockist_search', { search_term: state.searchTerm.trim() });
+        }
+      }, 250);
+    });
+
+    document.querySelectorAll('.ggf-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        document.querySelectorAll('.ggf-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        state.activeRange = chip.dataset.range;
+        applyFilters();
+        track('stockist_filter', { product_range: state.activeRange });
+      });
+    });
+
+    $('#ggf-gps').addEventListener('click', geolocate);
+
+    // ONE delegated listener for the whole list (survives re-renders)
+    $('#ggf-list').addEventListener('click', (e) => {
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) {
+        const eventMap = { directions: 'stockist_directions_click', call: 'stockist_call_click' };
+        track(eventMap[actionBtn.dataset.action], {
+          stockist_id: actionBtn.dataset.id, stockist_name: actionBtn.dataset.name
+        });
+        return; // let the anchor navigate normally
+      }
+      const card = e.target.closest('.ggf-card');
+      if (!card) return;
+      const id = card.dataset.id;
+      setActive(id);
+      const s = state.stockists.find(x => x.id === id);
+      if (s && state.map) {
+        state.map.flyTo([s.lat, s.lng], 14, { duration: 0.6 });
+        setTimeout(() => {
+          const m = state.markerById[id];
+          if (m) state.markerCluster.zoomToShowLayer(m, () => m.openPopup());
+        }, 600);
+      }
+      track('stockist_card_click', { stockist_id: id, stockist_name: s ? s.name : '' });
+    });
+  }
+
+  function showErrorState(message) {
+    $('#ggf-list').innerHTML = `
+      <div class="ggf-empty">
+        <strong>Couldn't load stockists</strong>
+        ${escapeHtml(message)}
+      </div>`;
+    $('#ggf-count').textContent = '0';
+  }
+
+  async function boot() {
+    initMap();
+    wireEvents();
+
+    if (!DATA_URL || DATA_URL === 'REPLACE_WITH_YOUR_JSON_URL') {
+      showErrorState('Map data URL is not set yet.');
+      return;
+    }
+
+    try {
+      state.stockists = await fetchStockists();
+      buildMarkers();
+      applyFilters();
+      track('stockist_map_view', { total_stockists: state.stockists.length });
+    } catch (err) {
+      console.error('[Stockist map] load failed:', err);
+      showErrorState('Please refresh the page or try again later.');
+      track('stockist_load_error', { message: String(err).slice(0, 120) });
+    }
+  }
+
+  if (typeof L !== 'undefined' && typeof L.markerClusterGroup !== 'undefined') {
+    boot();
+  } else {
+    const wait = setInterval(() => {
+      if (typeof L !== 'undefined' && typeof L.markerClusterGroup !== 'undefined') {
+        clearInterval(wait);
+        boot();
+      }
+    }, 50);
+  }
+})();
+</script>
